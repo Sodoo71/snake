@@ -3,27 +3,63 @@ const HEIGHT = 16;
 const unitSpace = 40;
 
 const board = document.querySelector(".board");
+const scoreEl = document.querySelector(".score"); 
+let gameInterval = null;
+let score = 0;
 
 // RIGHT BOTTOM LEFT TOP
 let DIRECTION = "RIGHT";
 
 const getRandomInt = (min, max) => {
-  return Math.floor(Math.random() * max + min);
+  return Math.floor(Math.random() * (max - min)) + min;
 };
 
-let food = { x: getRandomInt(0, WIDTH), y: getRandomInt(0, HEIGHT) };
-let snake = [
-  { x: Math.floor(WIDTH / 2), y: Math.floor(HEIGHT / 2) },
-  { x: Math.floor(WIDTH / 2), y: Math.floor(HEIGHT / 2) - 1 },
-  { x: Math.floor(WIDTH / 2), y: Math.floor(HEIGHT / 2) - 2 },
-  
 
-];
+const spawnFood = () => {
+  let newFood = null;
+
+  for (let i = 0; i < 100; i++) {
+    const candidate = {
+      x: getRandomInt(0, HEIGHT),
+      y: getRandomInt(0, WIDTH),
+    };
+    if (!snake.some((dot) => dot.x === candidate.x && dot.y === candidate.y)) {
+      newFood = candidate;
+      break;
+    }
+  }
+
+  if (!newFood) newFood = { x: 0, y: 0 };
+  return newFood;
+};
+
+let snake, food;
+
+const initGame = () => {
+  DIRECTION = "RIGHT";
+  score = 0;
+  updateScore();
+
+  snake = [
+    { x: Math.floor(HEIGHT / 2), y: Math.floor(WIDTH / 2) },
+    { x: Math.floor(HEIGHT / 2), y: Math.floor(WIDTH / 2) - 1 },
+    { x: Math.floor(HEIGHT / 2), y: Math.floor(WIDTH / 2) - 2 },
+  ];
+  food = spawnFood();
+
+  if (gameInterval) clearInterval(gameInterval);
+  gameInterval = setInterval(update, 200);
+  drawBoard();
+};
+
+const updateScore = () => {
+  scoreEl.textContent = `Score: ${score}`;
+};
 
 const drawBoard = () => {
   board.innerHTML = "";
-  board.style.width = `${40 * WIDTH}px`;
-  board.style.height = `${40 * HEIGHT}px`;
+  board.style.width = `${unitSpace * WIDTH}px`;
+  board.style.height = `${unitSpace * HEIGHT}px`;
 
   for (let row = 0; row < HEIGHT; row++) {
     for (let col = 0; col < WIDTH; col++) {
@@ -40,56 +76,57 @@ const drawBoard = () => {
 
   for (let i = 0; i < snake.length; i++) {
     const dot = snake[i];
+    const snakeEl = document.querySelector(`[x="${dot.x}"][y="${dot.y}"]`);
     if (i === 0) {
-      const headEl = document.querySelector(`[x="${dot.x}"][y="${dot.y}"]`);
-      headEl.classList.add("head");
+      snakeEl.classList.add("head");
     } else {
-      const bodyEl = document.querySelector(`[x="${dot.x}"][y="${dot.y}"]`);
-      bodyEl.classList.add("body");
+      snakeEl.classList.add("body");
     }
   }
 };
 
-setInterval(() => {
+const gameOver = () => {
+  clearInterval(gameInterval);
+  alert(`🎮 Game Over! Таны оноо: ${score}`);
+  initGame(); 
+};
+
+const update = () => {
   const newSnake = [];
 
+  let head;
   if (DIRECTION === "RIGHT") {
-    newSnake[0] = { x: snake[0].x, y: (snake[0].y + 1) % WIDTH };
+    head = { x: snake[0].x, y: (snake[0].y + 1) % WIDTH };
   } else if (DIRECTION === "LEFT") {
-    let nextY = snake[0].y - 1;
-    if (nextY === -1) {
-      nextY = WIDTH - 1;
-    }
-    newSnake[0] = { x: snake[0].x, y: nextY };
+    head = { x: snake[0].x, y: (snake[0].y - 1 + WIDTH) % WIDTH };
   } else if (DIRECTION === "BOTTOM") {
-    newSnake[0] = { x: (snake[0].x + 1) % HEIGHT, y: snake[0].y };
+    head = { x: (snake[0].x + 1) % HEIGHT, y: snake[0].y };
   } else if (DIRECTION === "TOP") {
-    let nextX = snake[0].x - 1;
-    if (nextX === -1) {
-      nextX = HEIGHT - 1;
-    }
-    newSnake[0] = { x: nextX, y: snake[0].y };
+    head = { x: (snake[0].x - 1 + HEIGHT) % HEIGHT, y: snake[0].y };
   }
+
+  
+  if (snake.some((dot) => dot.x === head.x && dot.y === head.y)) {
+    gameOver();
+    return;
+  }
+
+  newSnake.push(head);
 
   for (let i = 0; i < snake.length - 1; i++) {
-    const dot = snake[i];
-    newSnake.push(dot);
+    newSnake.push(snake[i]);
   }
 
-  if (newSnake[0].x === food.x && newSnake[0].y === food.y) {
+  if (head.x === food.x && head.y === food.y) {
     newSnake.push(snake[snake.length - 1]);
-
-    let newFood = 0;
-    newSnake.some((dot) => dot.x === newFood.x && dot.y === newFood.y);
-
-    newFood = { x: getRandomInt(0, WIDTH), y: getRandomInt(0, HEIGHT) };
-    food = newFood;
+    score++; 
+    updateScore();
+    food = spawnFood();
   }
+
   snake = newSnake;
   drawBoard();
-}, 200);
-
-drawBoard();
+};
 
 window.addEventListener("keydown", (e) => {
   const key = e.key;
@@ -103,4 +140,6 @@ window.addEventListener("keydown", (e) => {
     DIRECTION = "LEFT";
   }
 });
- 
+
+
+initGame();
